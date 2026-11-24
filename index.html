@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MED QUEST - 医療シティ経営</title>
+<style>
+:root{--bg:#07152c;--panel:#10294b;--panel2:#17385f;--cyan:#5ce4ff;--gold:#ffd45a;--text:#f3f8ff;--muted:#b8cbe0;--green:#68e0a0;--red:#ff8b98}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% -10%,#244b78,#07152c 58%);color:var(--text);font-family:system-ui,"Noto Sans JP",sans-serif}
+header{position:sticky;top:0;z-index:5;background:#08172bed;border-bottom:1px solid #ffffff22;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.brand{font-weight:1000;letter-spacing:1px;color:var(--cyan);font-size:19px}.stats{display:flex;gap:7px;flex-wrap:wrap}.chip{background:#ffffff12;border:1px solid #ffffff25;padding:7px 10px;border-radius:20px;font-size:13px}
+main{max-width:1250px;margin:auto;padding:14px;display:grid;grid-template-columns: minmax(0,1.65fr) minmax(280px,.85fr);gap:14px}
+.panel{background:linear-gradient(145deg,#17385f,#0d2342);border:1px solid #ffffff24;border-radius:18px;padding:14px;box-shadow:0 12px 28px #0004}
+h1{font-size:clamp(24px,4vw,38px);margin:0 0 6px}h2{font-size:18px;margin:0 0 12px}p{line-height:1.6;color:var(--muted)}
+#city{width:100%;height:auto;display:block;border-radius:14px;background:#8dd7db;border:2px solid #8beaff55;touch-action:manipulation}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.btn{border:0;border-radius:12px;padding:10px 13px;background:var(--cyan);color:#06213b;font-weight:850;cursor:pointer}.btn.secondary{background:#ffffff12;border:1px solid #ffffff30;color:var(--text)}.btn.gold{background:var(--gold)}.btn:disabled{opacity:.4;cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{background:#ffffff0d;border:1px solid #ffffff18;border-radius:12px;padding:10px}.metric b{display:block;font-size:20px}.metric small{color:var(--muted)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.tab{padding:8px 10px;border-radius:10px;background:#ffffff12;border:1px solid #ffffff20;color:white;cursor:pointer}.tab.active{background:#45cbe9;color:#06213b;font-weight:900}
+.item{background:#ffffff0c;border:1px solid #ffffff20;border-radius:12px;padding:10px;margin:8px 0;display:flex;gap:10px;justify-content:space-between;align-items:center}.item small{display:block;color:var(--muted);margin-top:3px}
+.log{max-height:180px;overflow:auto;font-size:13px;color:var(--muted);line-height:1.6}.bar{height:9px;background:#ffffff20;border-radius:20px;overflow:hidden}.bar span{display:block;height:100%;background:linear-gradient(90deg,#4ed8ff,#70efb0)}
+.notice{padding:11px;border-radius:12px;background:#54dfff18;border:1px solid #54dfff55;line-height:1.6;margin:10px 0}
+.modal{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;padding:18px;z-index:20}.modal.show{display:flex}.dialog{max-width:560px;width:100%;background:#10294b;border:1px solid #6de8ff88;border-radius:18px;padding:18px;box-shadow:0 20px 70px #0009}.choice{display:block;width:100%;text-align:left;margin:8px 0;background:#ffffff12;color:white;border:1px solid #ffffff30;border-radius:12px;padding:12px;cursor:pointer}.choice:hover{border-color:var(--cyan)}
+footer{text-align:center;color:#93abc4;font-size:12px;padding:18px}
+@media(max-width:850px){main{grid-template-columns:1fr;padding:9px}.stats{font-size:12px}.chip{padding:6px 8px}}
+</style>
+</head>
+<body>
+<header><div class="brand">✚ MED QUEST <span style="color:white;font-size:12px">MEDICAL CITY SIMULATOR</span></div><div class="stats"><span class="chip" id="level">Lv.1</span><span class="chip" id="exp">EXP 0/100</span><span class="chip" id="money">🪙 5,000G</span><span class="chip" id="week">1年目 4月 1週</span></div></header>
+<main>
+<section class="panel">
+<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><h1>医療シティを育てよう！</h1><p style="margin:0">施設を建て、スタッフを集め、地域の健康を守る経営シミュレーション。</p></div><button class="btn gold" onclick="nextWeek()">▶ 次の週へ</button></div>
+<div class="toolbar"><button class="btn" onclick="openBuild()">🏗️ 施設を建てる</button><button class="btn secondary" onclick="openStaff()">👩‍⚕️ スタッフ採用</button><button class="btn secondary" onclick="openEvent()">📋 医療イベント</button></div>
+<canvas id="city" width="900" height="540" aria-label="医療シティの街マップ"></canvas>
+<div class="notice" id="message">市長さん、ようこそ！まずは診療所や薬局を建てて、街の医療を充実させよう。</div>
+<div class="grid">
+<div class="metric">🏥 医療施設数<b id="facilities">0</b><small>街にある施設</small></div>
+<div class="metric">🧑‍🤝‍🧑 今週の患者<b id="patients">0人</b><small>施設の規模で変化</small></div>
+<div class="metric">💚 地域の健康度<b id="health">50/100</b><div class="bar"><span id="healthbar" style="width:50%"></span></div></div>
+<div class="metric">⭐ 市民満足度<b id="rating">50/100</b><div class="bar"><span id="ratingbar" style="width:50%"></span></div></div>
+</div>
+</section>
+<aside class="panel">
+<div class="tabs"><button class="tab active" onclick="showTab('manage',this)">経営</button><button class="tab" onclick="showTab('learning',this)">学習図鑑</button><button class="tab" onclick="showTab('achieve',this)">実績</button><button class="tab" onclick="showTab('save',this)">セーブ</button></div>
+<div id="manage">
+<h2>📊 今週の経営状況</h2>
+<div class="grid"><div class="metric">収入<b id="income">0G</b></div><div class="metric">支出<b id="expense">0G</b></div><div class="metric">👨‍⚕️ スタッフ<b id="staffcount">0人</b></div><div class="metric">💊 医薬品在庫<b id="medicine">20</b></div></div>
+<h2 style="margin-top:16px">📜 街のニュース</h2><div class="log" id="log"></div>
+</div>
+<div id="learning" hidden><h2>📚 医療・保険の学習図鑑</h2><div class="item"><div>🏥 <b>公的医療保険</b><small>病気やけがの医療費負担を軽くする社会保険制度。日本では年齢や所得などに応じた自己負担がある。</small></div></div><div class="item"><div>💊 <b>医薬品</b><small>医師の処方が必要な医療用医薬品と、薬局・店舗で購入できる一般用医薬品などがある。</small></div></div><div class="item"><div>🩺 <b>予防医療</b><small>健診・予防接種・生活習慣の見直しなどで、病気の予防や早期発見を目指す。</small></div></div><div class="item"><div>🧾 <b>民間医療保険</b><small>保険会社との契約に基づき、入院給付金などを受け取る仕組み。保障内容・条件の確認が大切。</small></div></div><div class="item"><div>🚑 <b>救急医療</b><small>急な病気やけがに対応する医療。緊急時は地域の救急体制を利用する。</small></div></div></div>
+<div id="achieve" hidden><h2>🏆 実績</h2><div id="achievements"></div></div>
+<div id="save" hidden><h2>💾 セーブデータ</h2><p>この端末のブラウザに自動保存されるよ。</p><button class="btn" onclick="saveGame()">今すぐ保存</button> <button class="btn secondary" onclick="exportSave()">データを書き出す</button><button class="btn secondary" onclick="document.getElementById('importFile').click()">データを読み込む</button><input id="importFile" type="file" accept="application/json" hidden onchange="importSave(event)"><p id="saveStatus">自動保存：有効</p><button class="btn secondary" onclick="resetGame()">最初からやり直す</button></div>
+</aside>
+</main><footer>学習用シミュレーションです。実際の診断・治療・保険契約の判断には使用しないでください。</footer>
+<div class="modal" id="modal"><div class="dialog"><div style="display:flex;justify-content:space-between;align-items:center"><h2 id="modalTitle">メニュー</h2><button class="btn secondary" onclick="closeModal()">閉じる ✕</button></div><div id="modalBody"></div></div></div>
+<script>
+const defaults={money:5000,level:1,exp:0,week:1,year:1,month:4,patients:0,health:50,rating:50,medicine:20,staff:[],buildings:[],income:0,expense:0,achievements:[],log:["MED QUESTへようこそ！医療シティの運営を始めよう。"]};
+let s=loadGame();
+const types=[
+{id:"clinic",name:"診療所",icon:"🏥",cost:1800,patients:18,desc:"地域の身近な診療拠点。患者数が増える。"},
+{id:"pharmacy",name:"薬局",icon:"💊",cost:1200,patients:5,desc:"処方箋に基づく薬の受け取りや服薬相談を支える。"},
+{id:"hospital",name:"総合病院",icon:"🏨",cost:4500,patients:45,desc:"多くの診療科を持つ大きな医療施設。"},
+{id:"checkup",name:"健診センター",icon:"🩺",cost:2200,patients:8,desc:"健診や健康相談で病気の早期発見を支援。"}
+];
+function loadGame(){try{return {...defaults,...JSON.parse(localStorage.getItem("medquestSave")||"{}")}}catch(e){return {...defaults}}}
+function saveGame(){localStorage.setItem("medquestSave",JSON.stringify(s));document.getElementById("saveStatus").textContent="保存しました！ "+new Date().toLocaleTimeString("ja-JP")}
+function log(t){s.log.unshift("・"+t);s.log=s.log.slice(0,30)}
+function fmt(n){return Math.floor(n).toLocaleString("ja-JP")+"G"}
+function render(){
+document.getElementById("level").textContent="Lv."+s.level;document.getElementById("exp").textContent="EXP "+s.exp+"/"+(s.level*100);document.getElementById("money").textContent="🪙 "+fmt(s.money);document.getElementById("week").textContent=s.year+"年目 "+s.month+"月 "+s.week+"週";
+document.getElementById("facilities").textContent=s.buildings.length;document.getElementById("patients").textContent=s.patients+"人";document.getElementById("health").textContent=s.health+"/100";document.getElementById("rating").textContent=s.rating+"/100";document.getElementById("healthbar").style.width=s.health+"%";document.getElementById("ratingbar").style.width=s.rating+"%";
+document.getElementById("income").textContent=fmt(s.income);document.getElementById("expense").textContent=fmt(s.expense);document.getElementById("staffcount").textContent=s.staff.length+"人";document.getElementById("medicine").textContent=s.medicine;document.getElementById("log").innerHTML=s.log.map(x=>"<div>"+x+"</div>").join("");
+document.getElementById("achievements").innerHTML=(["first","five","staff","healthy","rich"].map((id,i)=>{let names=["はじめての建設","街づくり初心者","チーム結成","健康な街","資金力アップ"];let desc=["施設を1つ建てる","施設を5つ建てる","スタッフを3人採用","健康度80以上","所持金10,000G以上"];return `<div class="item"><div>🏅 <b>${names[i]}</b><small>${desc[i]}</small></div><b>${s.achievements.includes(id)?"✅":"🔒"}</b></div>`}).join(""));
+drawCity();saveGame()
+}
+function drawCity(){
+let c=document.getElementById("city"),x=c.getContext("2d");x.clearRect(0,0,900,540);
+let sky=x.createLinearGradient(0,0,0,540);sky.addColorStop(0,"#a8e9ed");sky.addColorStop(1,"#d8f2c5");x.fillStyle=sky;x.fillRect(0,0,900,540);
+x.fillStyle="#8ccf8b";x.fillRect(0,150,900,390);
+for(let i=0;i<9;i++){x.fillStyle=i%2?"#75bd7b":"#8bcf83";x.beginPath();x.arc((i*127+40)%900,160+(i%3)*105,48,0,7);x.fill()}
+x.fillStyle="#687d89";x.fillRect(0,370,900,80);x.fillRect(390,120,100,420);x.strokeStyle="#fff4a8";x.setLineDash([18,15]);x.lineWidth=4;x.beginPath();x.moveTo(0,410);x.lineTo(900,410);x.moveTo(440,120);x.lineTo(440,540);x.stroke();x.setLineDash([]);
+let slots=[[170,230],[380,215],[620,235],[190,420],[680,420],[440,90],[780,110],[80,100]];
+slots.forEach((p,i)=>{x.fillStyle="#ffffff55";x.fillRect(p[0]-55,p[1]-42,110,84);x.strokeStyle="#ffffff99";x.strokeRect(p[0]-55,p[1]-42,110,84)});
+s.buildings.forEach((b,i)=>{let p=slots[i%slots.length],x0=p[0],y=p[1];let col=b.id==="hospital"?"#e8f5ff":b.id==="pharmacy"?"#e1fff0":b.id==="checkup"?"#fff0d0":"#e7f0ff";x.fillStyle="#42657b";x.fillRect(x0-48,y-20,96,65);x.fillStyle=col;x.fillRect(x0-43,y-58,86,82);x.fillStyle="#55a9d5";for(let k=0;k<3;k++)for(let j=0;j<2;j++)x.fillRect(x0-31+k*29,y-45+j*26,15,16);x.fillStyle="#fff";x.fillRect(x0-10,y-10,20,32);x.fillStyle="#e34d68";x.fillRect(x0-4,y-6,8,24);x.fillRect(x0-12,y+2,24,7);x.font="bold 13px sans-serif";x.fillStyle="#17334b";x.textAlign="center";x.fillText(b.name,x0,y+55)});
+for(let i=0;i<Math.min(18,s.patients);i++){let xx=35+(i*73)%830,yy=315+((i*37)%195);x.fillStyle=i%3===0?"#f28c9a":i%3===1?"#477bbd":"#f2c45f";x.beginPath();x.arc(xx,yy-8,7,0,7);x.fill();x.fillRect(xx-5,yy,10,15)}
+x.fillStyle="#123451dd";x.fillRect(14,14,250,48);x.fillStyle="white";x.font="bold 18px sans-serif";x.textAlign="left";x.fillText("🏙️ MEDICAL CITY",27,45);x.font="13px sans-serif";x.fillText("施設を建設して街を発展させよう",285,42)
+}
+function openModal(title,html){document.getElementById("modalTitle").textContent=title;document.getElementById("modalBody").innerHTML=html;document.getElementById("modal").classList.add("show")}
+function closeModal(){document.getElementById("modal").classList.remove("show")}
+function openBuild(){openModal("🏗️ 施設を建てる",types.map(t=>`<div class="item"><div><b>${t.icon} ${t.name}</b><small>${t.desc}<br>建設費：${fmt(t.cost)}</small></div><button class="btn" onclick="build('${t.id}')">建設</button></div>`).join(""))}
+function build(id){let t=types.find(a=>a.id===id);if(s.money<t.cost){alert("資金が足りないよ。次の週へ進んで収入を得よう！");return}if(s.buildings.length>=8){alert("街の区画がいっぱい！");return}s.money-=t.cost;s.buildings.push({id:t.id,name:t.name});s.exp+=25;s.health=Math.min(100,s.health+2);s.rating=Math.min(100,s.rating+2);log(t.name+"を建設した！");check();closeModal();render();document.getElementById("message").textContent=t.name+"が完成！街の医療体制が少し充実したよ。"}
+function openStaff(){let jobs=[["doctor","医師",1400,"診療能力を高める"],["nurse","看護師",900,"患者のケアを支える"],["pharmacist","薬剤師",1000,"薬の専門家として服薬を支える"],["public","保健師",850,"健康相談や予防活動を支える"]];openModal("👩‍⚕️ スタッフ採用",jobs.map(j=>`<div class="item"><div><b>${j[1]}</b><small>${j[3]}<br>採用費：${fmt(j[2])}</small></div><button class="btn" onclick="hire('${j[0]}','${j[1]}',${j[2]})">採用</button></div>`).join(""))}
+function hire(id,name,cost){if(s.money<cost){alert("資金が足りないよ");return}if(s.staff.length>=12){alert("スタッフ枠がいっぱいだよ");return}s.money-=cost;s.staff.push({id,name});s.exp+=15;log(name+"を採用した！");check();closeModal();render()}
+const events=[
+{q:"日本の公的医療保険について、正しい説明はどれ？",a:["加入者が保険料を出し合い、医療費の負担を支える","病院に行くたびに全額を必ず自分で払う","民間保険会社だけが運営する"],ok:0,why:"公的医療保険は、保険料などを財源として医療費の負担を支える社会保険制度だよ。"},
+{q:"薬局で処方箋に基づいて薬を渡す専門職は？",a:["薬剤師","救急救命士","理学療法士"],ok:0,why:"薬剤師は薬の専門家。処方内容の確認や服薬説明などを行うよ。"},
+{q:"病気の早期発見につながる取り組みは？",a:["健康診断を受ける","症状を必ず我慢する","薬を自己判断で増やす"],ok:0,why:"健診は健康状態を確認し、病気の早期発見につなげる取り組みだよ。"},
+{q:"民間医療保険を契約するときに大切なのは？",a:["保障内容・支払条件・保険料を確認する","説明を読まずに契約する","どんな場合も必ず給付されると思う"],ok:0,why:"給付条件や対象外となる場合、保険料などを確認することが大切。"}
+];
+function openEvent(){let e=events[Math.floor(Math.random()*events.length)];openModal("📋 医療知識チャレンジ",`<p>${e.q}</p>${e.a.map((a,i)=>`<button class="choice" onclick="answer(${i},${e.ok},${JSON.stringify(e.why)})">${["A","B","C"][i]}. ${a}</button>`).join("")}`)}
+function answer(i,ok,why){if(i===ok){s.exp+=30;s.money+=350;s.rating=Math.min(100,s.rating+3);log("医療クイズ正解！報酬350Gと経験値を獲得。");document.getElementById("modalBody").innerHTML="<div class='notice'>🎉 正解！ "+why+"</div><button class='btn' onclick='closeModal();check();render()'>OK</button>"}else{ s.rating=Math.max(0,s.rating-1);document.getElementById("modalBody").innerHTML="<div class='notice'>おしい！正解を確認しよう。"+why+"</div><button class='btn' onclick='closeModal();render()'>OK</button>"}}
+function nextWeek(){let base=s.buildings.reduce((a,b)=>a+(types.find(t=>t.id===b.id)?.patients||0),0);s.patients=Math.max(0,Math.round(base*(.8+Math.random()*.4)));s.income=s.patients*90+s.buildings.length*100;s.expense=s.staff.length*180+s.buildings.length*90+250;s.money+=s.income-s.expense;s.medicine=Math.max(0,s.medicine-Math.ceil(s.patients/30));if(s.medicine===0&&s.patients>0){s.health=Math.max(0,s.health-3);log("医薬品の在庫が不足。仕入れを検討しよう。")}else{s.health=Math.min(100,s.health+(s.buildings.length?2:0));s.rating=Math.min(100,s.rating+(s.staff.length?1:0))}
+s.exp+=15+s.patients;if(s.money<0){s.rating=Math.max(0,s.rating-3);log("赤字になった！施設やスタッフの数を見直そう。")}s.week++;if(s.week>4){s.week=1;s.month++;if(s.month>12){s.month=1;s.year++}}log("週次報告：患者"+s.patients+"人、収入"+fmt(s.income)+"、支出"+fmt(s.expense));check();render();document.getElementById("message").textContent="週次報告！患者 "+s.patients+"人、収支 "+fmt(s.income-s.expense)+"。"}
+function check(){while(s.exp>=s.level*100){s.exp-=s.level*100;s.level++;s.money+=500;log("レベルアップ！Lv."+s.level+"。ボーナス500G！")}let tests=[["first",s.buildings.length>=1],["five",s.buildings.length>=5],["staff",s.staff.length>=3],["healthy",s.health>=80],["rich",s.money>=10000]];tests.forEach(t=>{if(t[1]&&!s.achievements.includes(t[0])){s.achievements.push(t[0]);log("実績解除："+t[0])}})}
+function showTab(id,el){["manage","learning","achieve","save"].forEach(k=>document.getElementById(k).hidden=k!==id);document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));el.classList.add("active")}
+function exportSave(){let blob=new Blob([JSON.stringify(s,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="med-quest-save.json";a.click();URL.revokeObjectURL(a.href)}
+function importSave(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{s={...defaults,...JSON.parse(r.result)};render();alert("セーブデータを読み込んだよ！")}catch(err){alert("ファイルを読み込めませんでした")}};r.readAsText(f)}
+function resetGame(){if(confirm("本当に最初からやり直す？今のセーブデータは消えるよ。")){localStorage.removeItem("medquestSave");s={...defaults,staff:[],buildings:[],achievements:[],log:[ "新しい医療シティを開設！"]};render()}}
+render();
+</script>
+</body></html>
